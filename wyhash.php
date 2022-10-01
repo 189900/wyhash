@@ -2,14 +2,24 @@
 
 declare(strict_types=1);
 
-class Wip
+namespace n189900\Wyhash;
+
+use GMP;
+
+class Hasher
 {
-    public const BYTE_LENGTH = 32;
+    public const UPDATE_SIZE = 64;
+    public const ROUND_SIZE = 48;
 
     private static array $primes = [];
 
     private GMP $seed;
     private int $length = 0;
+
+    private GMP $one;
+    private GMP $two;
+
+    private string $tail = '';
 
     public function __construct(string $seed = '0')
     {
@@ -22,7 +32,9 @@ class Wip
             ];
         }
 
-        $this->seed = gmp_init($seed);
+        $this->seed = gmp_init($seed) ^ self::$primes[0];
+        $this->one = clone $this->seed;
+        $this->two = clone $this->seed;
     }
 
     public static function hash(string $buffer, string $seed = '0'): string
@@ -30,16 +42,14 @@ class Wip
         $wh = new self($seed);
         $length = mb_strlen($buffer, '8bit');
 
-        $wh->seed ^= self::$primes[0];
-
         $a = gmp_init(0);
         $b = gmp_init(0);
         if ($length <= 16) {
             if ($length >= 4) {
-                $a = (($wh->readBytes(4, $buffer)) << 32)
-                    | ($wh->readBytes(4, $buffer, ($length >> 3) << 2));
-                $b = (($wh->readBytes(4, $buffer, $length - 4)) << 32)
-                    | ($wh->readBytes(4, $buffer, $length - 4 - (($length >> 3) << 2)));
+                $a = $wh->readBytes(4, $buffer) << 32
+                    | $wh->readBytes(4, $buffer, ($length >> 3) << 2);
+                $b = $wh->readBytes(4, $buffer, $length - 4) << 32
+                    | $wh->readBytes(4, $buffer, $length - 4 - (($length >> 3) << 2));
             } elseif ($length > 0) {
                 $a = $wh->wyr3($buffer, $length);
             }
@@ -90,6 +100,110 @@ class Wip
         return str_pad(gmp_strval($result, 16), 16, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Accepts 64 bytes, passes first 48 bytes to round and retains the rest.
+     */
+    public function update(string $buffer): void
+    {
+        $length = mb_strlen($buffer, '8bit');
+        assert($length == self::UPDATE_SIZE);
+
+        if ($this->tail !== '') {
+            $buffer = $this->tail . $buffer;
+            $length += mb_strlen($this->tail, '8bit');
+        }
+
+        $aligned = $length - ($length % self::ROUND_SIZE);
+        $this->round(substr($buffer, 0, $aligned));
+
+        $this->tail = (string) substr($buffer, $aligned);
+    }
+
+    /**
+     * Accepts the final chunk of less than 64 bytes and returns the hash.
+     */
+    public function final(string $buffer): string
+    {
+        $length = mb_strlen($buffer, '8bit');
+        assert($length < self::UPDATE_SIZE);
+
+        if ($this->tail !== '') {
+            $buffer = $this->tail . $buffer;
+            $length += mb_strlen($this->tail, '8bit');
+            $this->tail = '';
+        }
+
+        if ($length > self::ROUND_SIZE) {
+            $aligned = $length - ($length % self::ROUND_SIZE);
+            $this->round(substr($buffer, 0, $aligned));
+
+            $a = $this->readBytes(8, $buffer, -16);
+            $b = $this->readBytes(8, $buffer, -8);
+
+            $buffer = substr($buffer, $aligned);
+            $length -= $aligned;
+        }
+
+        if ($hasOneAndTwo = $this->length >= self::ROUND_SIZE) {
+            $this->seed ^= $this->one ^ $this->two;
+        }
+
+        if ($hasOneAndTwo || $length > 16) {
+            foreach (array_slice(str_split($buffer, 16), 0, -1) as $chunk) {
+                $this->seed = $this->mix(
+                    $this->readBytes(8, $chunk) ^ self::$primes[1],
+                    $this->readBytes(8, $chunk, 8) ^ $this->seed,
+                );
+            }
+            $a ??= $this->readBytes(8, $buffer, -16);
+            $b ??= $this->readBytes(8, $buffer, -8);
+        } elseif ($length >= 4) {
+            $a = $this->readBytes(4, $buffer) << 32
+                | $this->readBytes(4, $buffer, ($length >> 3) << 2);
+            $b = $this->readBytes(4, $buffer, $length - 4) << 32
+                | $this->readBytes(4, $buffer, $length - 4 - (($length >> 3) << 2));
+        } elseif ($length > 0) {
+            $a = $this->wyr3($buffer, $length);
+        }
+        $this->length += $length;
+
+        $result = $this->mix(
+            self::$primes[1] ^ $this->length,
+            $this->mix(
+                ($a ?? gmp_init(0)) ^ self::$primes[1],
+                ($b ?? gmp_init(0)) ^ $this->seed,
+            ),
+        );
+
+        return str_pad(gmp_strval($result, 16), 16, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Accepts a 48-byte aligned buffer.
+     */
+    private function round(string $buffer): void
+    {
+        $length = mb_strlen($buffer, '8bit');
+        assert($length % self::ROUND_SIZE == 0);
+
+        for ($offset = 0; $offset < $length; $offset += self::ROUND_SIZE) {
+            $this->seed = $this->mix(
+                $this->readBytes(8, $buffer, $offset) ^ self::$primes[1],
+                $this->readBytes(8, $buffer, $offset + 8) ^ $this->seed,
+            );
+            $this->one = $this->mix(
+                $this->readBytes(8, $buffer, $offset + 16) ^ self::$primes[2],
+                $this->readBytes(8, $buffer, $offset + 24) ^ $this->one,
+            );
+            $this->two = $this->mix(
+                $this->readBytes(8, $buffer, $offset + 32) ^ self::$primes[3],
+                $this->readBytes(8, $buffer, $offset + 40) ^ $this->two,
+            );
+        }
+
+        $this->length += $length;
+    }
+
     private function readBytes(int $bytes, string $buffer, int $offset = 0): GMP
     {
         return gmp_import(substr($buffer, $offset, $bytes), $bytes, GMP_LITTLE_ENDIAN);
@@ -128,7 +242,16 @@ foreach ([
     ['ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', '9199383239c32554'],
     ['12345678901234567890123456789012345678901234567890123456789012345678901234567890', '7c1ccf6bba30f5a5'],
 ] as $seed => [$msg, $hash]) {
-    echo $msg . '=' . ($eh = Wip::hash($msg, (string) $seed)) . "\n";
+    echo $msg . '=' . ($eh = Hasher::hash($msg, (string) $seed)) . "\n";
+    assert($eh === $hash);
+
+    $h = new Hasher((string) $seed);
+    $chunks = str_split($msg, 64);
+    $tail = array_pop($chunks);
+    foreach ($chunks as $chunk) {
+        $h->update($chunk);
+    }
+    echo $msg . '=' . ($eh = $h->final($tail)) . "\n";
     assert($eh === $hash);
 }
 
@@ -160,8 +283,20 @@ foreach ([
     ['abcdefghijklmnopqrstuvwx', '0x18', 'a2b00c63c416dacb'],
     ['abcdefghijklmnopqrstuvwxy', '0x19', 'e83f6fab645c002d'],
     ['abcdefghijklmnopqrstuvwxyz', '0x1a', 'ecb882165ba99420'],
+
+    ['abcdefghijklmnopqrstuvwxyz1234567890123456789012', '0x1b', 'b43f94f2a56f15aa'],
+    ['abcdefghijklmnopqrstuvwxyz12345678901234567890123', '0x1c', '7feb635da5d73429'],
 ] as [$msg, $seed, $hash]) {
-    echo $msg . '=' . ($eh = Wip::hash($msg, $seed)) . "\n";
+    echo $msg . '=' . ($eh = Hasher::hash($msg, $seed)) . "\n";
+    assert($eh === $hash);
+
+    $h = new Hasher((string) $seed);
+    $chunks = str_split($msg, 64);
+    $tail = array_pop($chunks);
+    foreach ($chunks as $chunk) {
+        $h->update($chunk);
+    }
+    echo $msg . '=' . ($eh = $h->final($tail)) . "\n";
     assert($eh === $hash);
 }
 
