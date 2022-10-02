@@ -6,6 +6,7 @@ use GMP;
 
 class State
 {
+    public const DEFAULT_SEED = '0';
     public const UPDATE_SIZE = 64;
     private const ROUND_SIZE = 48;
 
@@ -16,8 +17,9 @@ class State
     private GMP $two;
     private int $length = 0;
     private string $tail = '';
+    private ?string $lastSixteen = null;
 
-    public function __construct(string $seed = '0')
+    public function __construct(string $seed = null)
     {
         if (self::$primes === []) {
             self::$primes = [
@@ -28,18 +30,18 @@ class State
             ];
         }
 
-        $this->seed = gmp_init($seed) ^ self::$primes[0];
+        $this->seed = gmp_init($seed ?? self::DEFAULT_SEED) ^ self::$primes[0];
         $this->one = clone $this->seed;
         $this->two = clone $this->seed;
     }
 
     /**
-     * Accepts 64 bytes, passes first 48 bytes to round and retains the rest.
+     * Accepts a 64-byte aligned buffer, passes a 48-byte aligned chunk to round and retains the rest.
      */
     public function update(string $buffer): void
     {
         $length = mb_strlen($buffer, '8bit');
-        assert($length == self::UPDATE_SIZE);
+        assert($length % self::UPDATE_SIZE == 0);
 
         if ($this->tail !== '') {
             $buffer = $this->tail . $buffer;
@@ -50,6 +52,7 @@ class State
         $this->round(substr($buffer, 0, $aligned));
 
         $this->tail = (string) substr($buffer, $aligned);
+        $this->lastSixteen = $this->tail !== '' ? null : substr($buffer, -16);
     }
 
     /**
@@ -79,6 +82,12 @@ class State
 
         if ($hasOneAndTwo = $this->length >= self::ROUND_SIZE) {
             $this->seed ^= $this->one ^ $this->two;
+
+            if (!isset($a, $b) && $length < 16) {
+                $tmp = $this->lastSixteen . $buffer;
+                $a = $this->readBytes(8, $tmp, -16);
+                $b = $this->readBytes(8, $tmp, -8);
+            }
         }
 
         if ($hasOneAndTwo || $length > 16) {
@@ -112,7 +121,7 @@ class State
     }
 
     /**
-     * Handles a 48-byte aligned buffer. Only used if payload length is greater than ROUND_SIZE.
+     * Handles a 48-byte aligned buffer. Applies to payloads exceeding 48 bytes (ROUND_SIZE).
      */
     private function round(string $buffer): void
     {

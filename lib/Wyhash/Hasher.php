@@ -9,12 +9,12 @@ class Hasher
     private State $state;
     private string $tail = '';
 
-    public function __construct(string $seed = '0')
+    public function __construct(string $seed = null)
     {
         $this->state = new State($seed);
     }
 
-    public static function hash(string $buffer, string $seed = '0'): string
+    public static function hash(string $buffer, string $seed = null): string
     {
         return (new self($seed))->final($buffer);
     }
