@@ -4,6 +4,14 @@
 
 Generated hashes are compatible with [version final 3](https://github.com/wangyi-fudan/wyhash/tree/a5995b98ebfa7bd38bfadc0919326d2e7aabb805).
 
+## Installation
+
+This package can be installed as a [Composer](https://getcomposer.org/) dependency.
+
+```bash
+composer require 189900/wyhash
+```
+
 ## Usage
 With a static call:
 ```php
