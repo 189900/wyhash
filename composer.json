@@ -3,11 +3,11 @@
     "description": "A PHP port of wyhash",
     "type": "library",
     "license": "MIT",
-    "authors": [
-        {
-            "name": "none",
-            "email": "189900@gmail.com"
-        }
+    "homepage": "https://github.com/189900/wyhash",
+    "keywords": [
+        "wyhash",
+        "non-cryptographic",
+        "hash"
     ],
     "require": {
         "php": ">=7.4",
@@ -25,5 +25,11 @@
         "psr-4": {
             "N189900\\Wyhash\\": "tests/Wyhash"
         }
-    }
+    },
+    "authors": [
+        {
+            "name": "none",
+            "email": "189900@gmail.com"
+        }
+    ]
 }
