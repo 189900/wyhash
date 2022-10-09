@@ -3,12 +3,14 @@
 namespace N189900\Wyhash;
 
 use GMP;
+use N189900\Wyhash\Exception\AlreadyFinalizedException;
 
 class State
 {
     public const DEFAULT_SEED = '0';
     public const UPDATE_SIZE = 64;
     private const ROUND_SIZE = 48;
+    private const STEP_SIZE = 16;
 
     private static array $primes = [];
 
@@ -17,7 +19,6 @@ class State
     private GMP $two;
     private int $length = 0;
     private string $tail = '';
-    private ?string $lastSixteen = null;
 
     public function __construct(string $seed = null)
     {
@@ -37,9 +38,14 @@ class State
 
     /**
      * Accepts a 64-byte aligned buffer, passes a 48-byte aligned chunk to round and retains the rest.
+     * @throws AlreadyFinalizedException
      */
     public function update(string $buffer): void
     {
+        if ($this->length < 0) {
+            throw new AlreadyFinalizedException('Update cannot be called on finalized state.');
+        }
+
         $length = mb_strlen($buffer, '8bit');
         assert($length % self::UPDATE_SIZE == 0);
 
@@ -48,18 +54,24 @@ class State
             $length += mb_strlen($this->tail, '8bit');
         }
 
-        $aligned = $length - ($length % self::ROUND_SIZE);
-        $this->round(substr($buffer, 0, $aligned));
+        if (!$excess = $length % self::ROUND_SIZE) {
+            $excess = self::STEP_SIZE;
+        }
 
-        $this->tail = (string) substr($buffer, $aligned);
-        $this->lastSixteen = $this->tail !== '' ? null : substr($buffer, -16);
+        $this->round(substr($buffer, 0, -$excess));
+        $this->tail = (string) substr($buffer, -$excess);
     }
 
     /**
      * Accepts the final chunk of less than 64 bytes and returns the hash.
+     * @throws AlreadyFinalizedException
      */
     public function final(string $buffer): string
     {
+        if ($this->length < 0) {
+            throw new AlreadyFinalizedException('Final cannot be called on finalized state.');
+        }
+
         $length = mb_strlen($buffer, '8bit');
         assert($length < self::UPDATE_SIZE);
 
@@ -69,25 +81,24 @@ class State
             $this->tail = '';
         }
 
-        if ($length > self::ROUND_SIZE) {
-            $aligned = $length - ($length % self::ROUND_SIZE);
-            $this->round(substr($buffer, 0, $aligned));
+        $uneven = $this->length > self::ROUND_SIZE ? $this->length % self::ROUND_SIZE : 0;
+
+        if ($uneven || $length > self::ROUND_SIZE) {
+            $length -= $uneven ? self::ROUND_SIZE - $uneven : 0;
+
+            if ($length > self::ROUND_SIZE) {
+                $length -= $length - ($length % self::ROUND_SIZE);
+            }
 
             $a = $this->readBytes(8, $buffer, -16);
             $b = $this->readBytes(8, $buffer, -8);
 
-            $buffer = substr($buffer, $aligned);
-            $length -= $aligned;
+            $this->round(substr($buffer, 0, -$length));
+            $buffer = substr($buffer, -$length);
         }
 
         if ($hasOneAndTwo = $this->length >= self::ROUND_SIZE) {
             $this->seed ^= $this->one ^ $this->two;
-
-            if (!isset($a, $b) && $length < 16) {
-                $tmp = $this->lastSixteen . $buffer;
-                $a = $this->readBytes(8, $tmp, -16);
-                $b = $this->readBytes(8, $tmp, -8);
-            }
         }
 
         if ($hasOneAndTwo || $length > 16) {
@@ -116,6 +127,7 @@ class State
                 ($b ?? gmp_init(0)) ^ $this->seed,
             ),
         );
+        $this->length = -1;
 
         return str_pad(gmp_strval($result, 16), 16, '0', STR_PAD_LEFT);
     }
@@ -126,21 +138,33 @@ class State
     private function round(string $buffer): void
     {
         $length = mb_strlen($buffer, '8bit');
-        assert($length % self::ROUND_SIZE == 0);
+        assert($length % self::STEP_SIZE == 0);
 
-        for ($offset = 0; $offset < $length; $offset += self::ROUND_SIZE) {
-            $this->seed = $this->mix(
-                $this->readBytes(8, $buffer, $offset) ^ self::$primes[1],
-                $this->readBytes(8, $buffer, $offset + 8) ^ $this->seed,
-            );
-            $this->one = $this->mix(
-                $this->readBytes(8, $buffer, $offset + 16) ^ self::$primes[2],
-                $this->readBytes(8, $buffer, $offset + 24) ^ $this->one,
-            );
-            $this->two = $this->mix(
-                $this->readBytes(8, $buffer, $offset + 32) ^ self::$primes[3],
-                $this->readBytes(8, $buffer, $offset + 40) ^ $this->two,
-            );
+        $op = ($this->length % self::ROUND_SIZE) / self::STEP_SIZE;
+        for ($offset = 0; $offset < $length; $offset += self::STEP_SIZE) {
+            switch ($op) {
+                case 0:
+                    $this->seed = $this->mix(
+                        $this->readBytes(8, $buffer, $offset) ^ self::$primes[1],
+                        $this->readBytes(8, $buffer, $offset + 8) ^ $this->seed,
+                    );
+                    break;
+
+                case 1:
+                    $this->one = $this->mix(
+                        $this->readBytes(8, $buffer, $offset) ^ self::$primes[2],
+                        $this->readBytes(8, $buffer, $offset + 8) ^ $this->one,
+                    );
+                    break;
+
+                case 2:
+                    $this->two = $this->mix(
+                        $this->readBytes(8, $buffer, $offset) ^ self::$primes[3],
+                        $this->readBytes(8, $buffer, $offset + 8) ^ $this->two,
+                    );
+                    break;
+            }
+            $op = ++$op % 3;
         }
 
         $this->length += $length;

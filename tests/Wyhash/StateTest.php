@@ -2,6 +2,8 @@
 
 namespace N189900\Wyhash;
 
+use N189900\Wyhash\Exception\AlreadyFinalizedException;
+
 /**
  * @coversDefaultClass \N189900\Wyhash\State
  */
@@ -344,5 +346,33 @@ class StateTest extends \PHPUnit\Framework\TestCase
             ['012345678901234567890123456789012345678912345678zyxwvutsrqponmlk012345678901234567890123456789012345678912345678zyxwvutsrqponmlkzyxwvutsrqponmlkjihgfedcbazyxwvutsrqponmlkjihgfedcbazyxwvutsrq', '0x20', '68a63a60c52f5291'],
             ['012345678901234567890123456789012345678912345678zyxwvutsrqponmlk012345678901234567890123456789012345678912345678zyxwvutsrqponmlkzyxwvutsrqponmlkjihgfedcbazyxwvutsrqponmlkjihgfedcbazyxwvutsrqp', '0x20', 'bd873d7d970b8667'],
         ];
+    }
+
+    /**
+     * @covers ::final
+     * @covers \N189900\Wyhash\Exception\AlreadyFinalizedException
+     */
+    public function testNoDoubleFinalize(): void
+    {
+        $state = new State();
+
+        $this->assertNotEmpty($state->final(''));
+
+        $this->expectException(AlreadyFinalizedException::class);
+        $state->final('');
+    }
+
+    /**
+     * @covers ::update
+     * @covers \N189900\Wyhash\Exception\AlreadyFinalizedException
+     */
+    public function testNoUpdateAfterFinalize(): void
+    {
+        $state = new State();
+
+        $this->assertNotEmpty($state->final(''));
+
+        $this->expectException(AlreadyFinalizedException::class);
+        $state->update('');
     }
 }

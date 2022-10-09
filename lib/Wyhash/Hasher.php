@@ -3,6 +3,7 @@
 namespace N189900\Wyhash;
 
 use GMP;
+use N189900\Wyhash\Exception\AlreadyFinalizedException;
 
 class Hasher
 {
@@ -19,6 +20,9 @@ class Hasher
         return (new self($seed))->final($buffer);
     }
 
+    /**
+     * @throws AlreadyFinalizedException
+     */
     public function update(string $buffer): self
     {
         $this->tail .= $buffer;
@@ -32,6 +36,9 @@ class Hasher
         return $this;
     }
 
+    /**
+     * @throws AlreadyFinalizedException
+     */
     public function final(string $buffer = ''): string
     {
         if (isset($buffer[State::UPDATE_SIZE - 1])) {
