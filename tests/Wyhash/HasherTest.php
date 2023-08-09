@@ -53,47 +53,47 @@ class HasherTest extends \PHPUnit\Framework\TestCase
     public function dataProviderTestVectors(): array
     {
         return [
-            ['', '0', '42bc986dc5eec4d3'],
-            ['a', '1', '84508dc903c31551'],
-            ['abc', '2', '0bc54887cfc9ecb1'],
-            ['message digest', '3', '6e2ff3298208a67c'],
-            ['abcdefghijklmnopqrstuvwxyz', '4', '9a64e42e897195b9'],
-            ['ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', '5', '9199383239c32554'],
-            ['12345678901234567890123456789012345678901234567890123456789012345678901234567890', '6', '7c1ccf6bba30f5a5'],
+            ['', '0x00', '0409638ee2bde459'],
+            ['a', '0x01', 'a8412d091b5fe0a9'],
+            ['abc', '0x02', '32dd92e4b2915153'],
+            ['message digest', '0x03', '8619124089a3a16b'],
+            ['abcdefghijklmnopqrstuvwxyz', '0x04', '7a43afb61d7f5f40'],
+            ['ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', '0x05', 'ff42329b90e50d58'],
+            ['12345678901234567890123456789012345678901234567890123456789012345678901234567890', '0x06', 'c39cab13b115aad3'],
         ];
     }
 
     public function dataProviderBoundries(): array
     {
         return [
-            ['a', '0x1', '84508dc903c31551'],
-            ['ab', '0x2', '06f4d2359eb619e0'],
-            ['abc', '0x3', 'edd59f916c82d920'],
-            ['abcd', '0x4', '9013a52af4b8c311'],
-            ['abcde', '0x5', '451c8ad7a1d4e30c'],
-            ['abcdef', '0x6', '929ccd94eb1c7878'],
-            ['abcdefg', '0x7', '1f9702aecba6ed27'],
-            ['abcdefgh', '0x8', '11f94459656c2d53'],
-            ['abcdefghi', '0x9', 'f022ee9e5364ccb2'],
-            ['abcdefghij', '0xa', '699ebdda5ac660b1'],
-            ['abcdefghijk', '0xb', '84179c6e6fce0fb2'],
-            ['abcdefghijkl', '0xc', 'cb85cefdac8160b5'],
-            ['abcdefghijklm', '0xd', 'eded2a77ccf86b11'],
-            ['abcdefghijklmn', '0xe', '17c9e80467cd756d'],
-            ['abcdefghijklmno', '0xf', '07abfeb3b0faa367'],
-            ['abcdefghijklmnop', '0x10', '1975bb261e82c8a3'],
-            ['abcdefghijklmnopq', '0x11', 'ffec211aeea1c6bf'],
-            ['abcdefghijklmnopqr', '0x12', 'f9b3d4200029fe5a'],
-            ['abcdefghijklmnopqrs', '0x13', '1b4db5fe3b176326'],
-            ['abcdefghijklmnopqrst', '0x14', '92a81b2a949efca4'],
-            ['abcdefghijklmnopqrstu', '0x15', '189a56a731f494a2'],
-            ['abcdefghijklmnopqrstuv', '0x16', '3860410470fc3baf'],
-            ['abcdefghijklmnopqrstuvw', '0x17', '80a65c4a7d3ea931'],
-            ['abcdefghijklmnopqrstuvwx', '0x18', 'a2b00c63c416dacb'],
-            ['abcdefghijklmnopqrstuvwxy', '0x19', 'e83f6fab645c002d'],
-            ['abcdefghijklmnopqrstuvwxyz', '0x1a', 'ecb882165ba99420'],
-            ['abcdefghijklmnopqrstuvwxyz1234567890123456789012', '0x1b', 'b43f94f2a56f15aa'],
-            ['abcdefghijklmnopqrstuvwxyz12345678901234567890123', '0x1c', '7feb635da5d73429'],
+            ['a', '0x01', 'a8412d091b5fe0a9'],
+            ['ab', '0x02', '8b7217c061d20083'],
+            ['abc', '0x03', 'd48aa7d78e3836b1'],
+            ['abcd', '0x04', '7fd76d4558a8929d'],
+            ['abcde', '0x05', 'cb83330ef9ef6822'],
+            ['abcdef', '0x06', '61b232c4f3585759'],
+            ['abcdefg', '0x07', '9655db40456cb53d'],
+            ['abcdefgh', '0x08', '5638cd0ca81dafe2'],
+            ['abcdefghi', '0x09', '76f018efc6022e79'],
+            ['abcdefghij', '0x0a', '0702332e4dd0c546'],
+            ['abcdefghijk', '0x0b', '714b9c2a0402c881'],
+            ['abcdefghijkl', '0x0c', '4c966cdd06015416'],
+            ['abcdefghijklm', '0x0d', 'a770e6fb8d028e9e'],
+            ['abcdefghijklmn', '0x0e', '4ebc6ad5cf396d19'],
+            ['abcdefghijklmno', '0x0f', '63665326d6688ddf'],
+            ['abcdefghijklmnop', '0x10', 'e4689174fc7dea98'],
+            ['abcdefghijklmnopq', '0x11', '53bacb246c11c41b'],
+            ['abcdefghijklmnopqr', '0x12', '1c422affc8f0f447'],
+            ['abcdefghijklmnopqrs', '0x13', 'c7b082d58a3c7863'],
+            ['abcdefghijklmnopqrst', '0x14', '7409af2dfb671007'],
+            ['abcdefghijklmnopqrstu', '0x15', '0ff8f6c74d1d45c7'],
+            ['abcdefghijklmnopqrstuv', '0x16', '2c8b87e29e108062'],
+            ['abcdefghijklmnopqrstuvw', '0x17', 'df69ee21ce7efa5f'],
+            ['abcdefghijklmnopqrstuvwx', '0x18', '451982a1c147f43f'],
+            ['abcdefghijklmnopqrstuvwxy', '0x19', '42dac569bb7d64cd'],
+            ['abcdefghijklmnopqrstuvwxyz', '0x1a', '19d12a45ac41d86d'],
+            ['abcdefghijklmnopqrstuvwxyz1234567890123456789012', '0x1b', '41d8853646b7e361'],
+            ['abcdefghijklmnopqrstuvwxyz12345678901234567890123', '0x1c', 'ec8078b9111be37b'],
         ];
     }
 
@@ -116,6 +116,6 @@ class HasherTest extends \PHPUnit\Framework\TestCase
             }
         }
 
-        $this->assertSame('11c4b58ff0f5ae88', $hasher->final());
+        $this->assertSame('099a2c9bf44c34b9', $hasher->final());
     }
 }

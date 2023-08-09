@@ -31,7 +31,8 @@ class State
             ];
         }
 
-        $this->seed = gmp_init($seed ?? self::DEFAULT_SEED) ^ self::$primes[0];
+        $this->seed = gmp_init($seed ?? self::DEFAULT_SEED);
+        $this->seed ^= $this->mix($this->seed ^ self::$primes[0], self::$primes[1]);
         $this->one = clone $this->seed;
         $this->two = clone $this->seed;
     }
@@ -120,12 +121,13 @@ class State
         }
         $this->length += $length;
 
+        $a = ($a ?? gmp_init(0)) ^ self::$primes[1];
+        $b = ($b ?? gmp_init(0)) ^ $this->seed;
+        $this->mum($a, $b);
+
         $result = $this->mix(
-            self::$primes[1] ^ $this->length,
-            $this->mix(
-                ($a ?? gmp_init(0)) ^ self::$primes[1],
-                ($b ?? gmp_init(0)) ^ $this->seed,
-            ),
+            $a ^ self::$primes[0] ^ $this->length,
+            $b ^ self::$primes[1],
         );
         $this->length = -1;
 

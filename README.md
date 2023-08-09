@@ -5,7 +5,7 @@
 
 `189900/wyhash` is a PHP implementation of the [wyhash algorithm by Wang Yi](https://github.com/wangyi-fudan/wyhash).
 
-Generated hashes are compatible with [version final 3](https://github.com/wangyi-fudan/wyhash/tree/a5995b98ebfa7bd38bfadc0919326d2e7aabb805).
+Generated hashes are compatible with [version final 4](https://github.com/wangyi-fudan/wyhash/tree/ea3b25e1aef55d90f707c3a292eeb9162e2615d8).
 
 ## Installation
 
