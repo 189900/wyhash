@@ -1,7 +1,7 @@
 # PHP Wyhash (fast non-cryptographic hash)
 
 [![Latest Version](https://img.shields.io/github/release/189900/wyhash.svg?style=flat-square)](https://github.com/189900/wyhash/releases)
-[![Build Status](https://img.shields.io/github/workflow/status/189900/wyhash/CI?label=ci%20build&style=flat-square)](https://github.com/189900/wyhash/actions?query=workflow%3ACI)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/189900/wyhash/ci.yaml?branch=develop&label=ci%20build&style=flat-square)](https://github.com/189900/wyhash/actions?query=workflow%3ACI)
 
 `189900/wyhash` is a PHP implementation of the [wyhash algorithm by Wang Yi](https://github.com/wangyi-fudan/wyhash).
 
